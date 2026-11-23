@@ -1,0 +1,14 @@
+# Godot 4 engine cache and auto-generated imports
+.godot/
+*/.godot/
+*/*/.godot/
+
+# Binaries exceeding GitHub 100MB limit
+*.exe
+game/rebound.exe
+
+# Temporary and local log files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

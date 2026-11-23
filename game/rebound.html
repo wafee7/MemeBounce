@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RE:BOUND</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a0f; display:flex; align-items:center; justify-content:center; width:100vw; height:100vh; overflow:hidden; }
+canvas { image-rendering:pixelated; image-rendering:crisp-edges; display:block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// ═══════════════════════════════════════════════════════
+//  RE:BOUND  —  Reverse-engineered from Godot 4.7.2 PCK
+//  Physics constants extracted from player.gdc bytecode
+//  Level maps extracted from .scn binary scenes
+// ═══════════════════════════════════════════════════════
+
+const CANVAS_W = 320, CANVAS_H = 180;
+const TILE = 8;
+
+// ── Physics (from player.gdc constants) ──────────────
+const RUN_SPEED    = 92;
+const ACCEL        = 1000;
+const DECEL        = 1400;
+const AIR_ACCEL    = 800;
+const AIR_DECEL    = 520;
+const JUMP_VEL     = -270;
+const GRAVITY_UP   = 620;
+const GRAVITY_DOWN = 960;
+const MAX_FALL     = 300;
+const JUMP_CUT     = 0.5;
+const COYOTE_TICKS = 6;
+const BUFFER_TICKS = 7;
+const BOUNCE_VEL   = -350;
+const ECHO_MAX_TICKS = 600;
+const ECHO_MIN_TICKS = 15;
+
+// ── Colors (from level.gdc constants) ────────────────
+const COL_DOOR_A   = '#a78bfa';
+const COL_DOOR_B   = '#60a5fa';
+const COL_PLATE_A  = '#a78bfa';
+const COL_PLATE_B  = '#60a5fa';
+const COL_ECHO     = '#22d3ee';
+const COL_EXIT     = '#34d399';
+const COL_FAIL     = '#f472b6';
+const COL_PLAYER   = '#f8fafc';
+const COL_WALL     = '#1e1b2e';
+const COL_WALL2    = '#2d2a3e';
+const COL_SPIKE    = '#ef4444';
+const COL_BOUNCE   = '#fbbf24';
+const COL_PLATFORM = '#6b7280';
+const COL_BG       = '#0d0b1a';
+const COL_FLYER    = '#f97316';
+
+// ── Fail messages (from level.gdc consts 13-34) ──────
+const FAIL_MSGS = [
+  "SKILL ISSUE","BRUH MOMENT","L + RATIO","IT'S JOEVER",
+  "GIT GUD","YEET","NOT EVEN CLOSE","PAIN","TOUCHING GRASS RN",
+  "RAGEQUIT?","DELETE THE GAME","CERTIFIED FUMBLE","W ATTEMPT THO",
+  "CRINGE","BALLED OUT","DOWN BAD","CERTIFIED FAIL","UNLUCKY",
+  "RATIO","COOKED","COOKED (AGAIN)","NAUR"
+];
+
+// ── Level Data ────────────────────────────────────────
+const LEVELS = [
+  {
+    id:"Level 1", title:"FIRST FALL",
+    waves:[{y:17,first:60,interval:360,speed:35,bob:0}],
+    hints:[
+      {cx:2,cy:11,text:"A/D OR ARROWS: MOVE"},
+      {cx:18,cy:11,text:"SPACE: JUMP"},
+      {cx:22,cy:12,text:"POINTY = OUCHIE"},
+      {cx:31,cy:9,text:"FALLING IS NOT THE END (TRUST)"},
+      {cx:31,cy:10,text:"YOU ALWAYS BOUNCE BACK, BESTIE"},
+      {cx:56,cy:7,text:"THE WAY UP"},
+      {cx:56,cy:8,text:"IS DOWN (BIG BRAIN)"},
+      {cx:72,cy:5,text:"THE EXIT (REAL)"},
+      {cx:40,cy:12,text:"CATS? JUMP OVER OR BONK 'EM"},
+    ],
+    map:[
+      "####################################################################################",
+      "#..................................................................................#",
+      "#..................................................................................#",
+      "#..................................................................................#",
+      "#..................................................................................#",
+      "#..................................................................................#",
+      "#..................................................................................#",
+      "#..................................................................................#",
+      "#..................................................................................#",
+      "#..................................................................................#",
+      "#...........................................................................E......#",
+      "#...................................................................################",
+      "#...................................................................################",
+      "#...................................................................################",
+      "#...................................................................################",
+      "#...............................................----..----..........################",
+      "#.............######................................................################",
+      "#.P...........######.....^^^...................^^^^^^^^^^^..........################",
+      "#####################################.....######################....################",
+      "#####################################.....######################....################",
+      "#####################################.....######################....################",
+      "#####################################.....######################.oo.################",
+      "#####################################.....##########################################",
+    ]
+  },
+  {
+    id:"Level 2", title:"MEET YOUR ECHO",
+    waves:[{y:17,first:90,interval:320,speed:40,bob:0}],
+    hints:[
+      {cx:3,cy:10,text:"PLATES OPEN DOORS"},
+      {cx:3,cy:11,text:"BUT ONLY WHILE HELD"},
+      {cx:19,cy:8,text:"R: REBOUND (FAIL ON PURPOSE)"},
+      {cx:19,cy:9,text:"YOUR ECHO COPIES YOUR HOMEWORK"},
+      {cx:36,cy:6,text:"TOO FAR TO DO ALONE..."},
+      {cx:36,cy:7,text:"BRO NEEDS A HOMIE"},
+    ],
+    map:[
+      "############################################################",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................#..............#",
+      "#...........................................A..............#",
+      "#..........................................................#",
+      "#..........................................................#",
+      "#.................................###......................#",
+      "#.^^.aa..................P........###................E.....#",
+      "############################################################",
+      "############################################################",
+      "############################################################",
+      "############################################################",
+      "############################################################",
+    ]
+  },
+  {
+    id:"Level 3", title:"SPRING LOADED",
+    waves:[{y:17,first:60,interval:300,speed:45,bob:0}],
+    hints:[
+      {cx:4,cy:8,text:"BOUNCE PADS GO BRRR"},
+      {cx:4,cy:9,text:"LAND ON YELLOW = MEGA JUMP"},
+      {cx:30,cy:6,text:"CHAIN THE BOUNCES"},
+    ],
+    map:[
+      "########################################################",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#......................................................#",
+      "#.....####.....####.....####......................E.....#",
+      "#.oo.......oo.......oo..........######################.#",
+      "#.P....^^^.....^^^.....^^^......######################.#",
+      "########################################################",
+      "########################################################",
+      "########################################################",
+      "########################################################",
+      "########################################################",
+    ]
+  },
+  {
+    id:"Level 4", title:"BOUNCE BACK",
+    waves:[{y:25,first:60,interval:280,speed:50,bob:0}],
+    hints:[
+      {cx:4,cy:10,text:"BIGGER MAP"},
+      {cx:4,cy:11,text:"BIGGER BRAIN NEEDED"},
+      {cx:35,cy:6,text:"ECHO HOLDS THE PLATE"},
+      {cx:35,cy:7,text:"YOU MAKE THE RUN"},
+    ],
+    map:[
+      "########################################################################",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#.................................................#....................#",
+      "#...........................##....................#................E...#",
+      "#..................aa.......##.....^^^.......bb.^^#...........##########",
+      "#--------------####################################...........##########",
+      "#..............####################################....................#",
+      "#..............####################################....................#",
+      "#.............................A...................B....................#",
+      "#......................................................................#",
+      "#......................................................................#",
+      "#......................................................................#",
+      "#......................................................................#",
+      "#..................................---------...........................#",
+      "#......................................................................#",
+      "#.oo....P............................^^^^^^^..............oo...........#",
+      "########################################################################",
+      "########################################################################",
+      "########################################################################",
+      "########################################################################",
+      "########################################################################"
+    ]
+  },
+  {
+    id:"Level 5", title:"INCOMING",
+    waves:[{y:17,first:0,interval:210,speed:55,bob:0}],
+    hints:[
+      {cx:12,cy:4,text:"CATS INCOMING FROM THE RIGHT"},
+      {cx:12,cy:5,text:"BONK THEM: LAND ON TOP"},
+      {cx:12,cy:8,text:"YOUR ECHO DODGES"},
+      {cx:12,cy:9,text:"WHAT YOU DODGED"},
+    ],
+    map:[
+      "########################################",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......#..............................#",
+      "#.......A..............................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#..E................P............aa....#",
+      "########################################",
+      "########################################",
+      "########################################",
+      "########################################",
+      "########################################",
+    ]
+  },
+  {
+    id:"Level 6", title:"CROSSFIRE",
+    waves:[{y:17,first:30,interval:160,speed:70,bob:0}],
+    hints:[
+      {cx:5,cy:8,text:"HOLD A. THEN HOLD B."},
+      {cx:5,cy:9,text:"DODGE OR GET BONKED."},
+      {cx:21,cy:4,text:"ONE ECHO. TWO DOORS."},
+      {cx:21,cy:5,text:"INCOMING CATS."},
+    ],
+    map:[
+      "##################################################",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................#.....#........#",
+      "#.................................A.....B........#",
+      "#................................................#",
+      "#................................................#",
+      "#................................................#",
+      "#..P..aa........bb............................E..#",
+      "##################################################",
+      "##################################################",
+      "##################################################",
+      "##################################################",
+      "##################################################",
+    ]
+  },
+  {
+    id:"Level 7", title:"LAST BOUNCE",
+    waves:[
+      {y:8,first:40,interval:200,speed:90,bob:0},
+      {y:17,first:150,interval:220,speed:75,bob:0}
+    ],
+    hints:[
+      {cx:13,cy:4,text:"EVERYTHING YOU LEARNED"},
+      {cx:13,cy:5,text:"ALL AT ONCE. NO PRESSURE"},
+      {cx:36,cy:4,text:"ONE LAST BOUNCE. SEND IT"},
+    ],
+    map:[
+      "################################################",
+      "#...........................#..................#",
+      "#...........................#..................#",
+      "#...........................#..................#",
+      "#...........................#..................#",
+      "#...........................#..................#",
+      "#...........................#..................#",
+      "#...........................#..................#",
+      "#aa.........................#..................#",
+      "#-----------................#.............E....#",
+      "#...........................#........###########",
+      "#...........................#........###########",
+      "#...........................#........###########",
+      "#...........................A........###########",
+      "#....................................###########",
+      "#....................................###########",
+      "#....................................###########",
+      "#...oo..........P................oo..###########",
+      "################################################",
+      "################################################",
+      "################################################",
+      "################################################",
+      "################################################",
+    ]
+  },
+];
+
+// ══════════════════════════════════════════════════════
+//  CANVAS SETUP
+// ══════════════════════════════════════════════════════
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+// Hamster meme image for failure screens
+const hamsterImg = new Image();
+hamsterImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4AAAAMoCAYAAACee47UAAAQAElEQVR4Aezde5Tf510f+M/o4pFGkjWSxxK25dpJHIxJYgKBbtKUNIQCDV3aLFAKAQ5bLtsUmgOUBpalJyGUlkNJT+EEKAW6lE3Z00K4HFqWbaA0JJRNoCYXOySKHduKJdmSR6PRbSRZl1k9iU18mfk8M/O7fS8vn7wt6ff5PbfXM3L7OfzxbAr/ECBAgAABAgQIECBAgEAvBDSAvbjm1Q7pcwIECBAgQIAAAQIE+iSgAezTbTsrgacL+D0BAgQIECBAgEDvBDSAvbtyByZAgEAEAwIECBAgQKCfAhrAft67UxMgQIBAfwWcnAABAgR6LKAB7PHlOzoBAgQIECDQNwHnJUCg7wIawL7/BDg/AQIECBAgQIBAPwScksA1AQ3gNQT/I0CAAAECBAgQIECAQJcFnjqbBvApCb8SIECAAAECBAgQIECg4QI3z+1bHiQawIZf8Gi2Z1YCBAgQIECAAAECBPoooAHs4607c78FnJ4AAQIECBAgQKC3AhrA3l69gxMg0EcBZyZAgAABAgT6LaAB7Pf9Oz0BAgQI9EfASQkQIECAQGgA/RAQIECAAAECBDov4IAECBD4tIAG8NMO/k2AAAECBAgQIECgmwJOReBpAhrAp2H4LQECBAgQIECAAAECBLok8OyzaACfLeLPBAgQIECAAAECBAgQGJHAIG/4lbGDbksDOKhgq8bbLAECBAgQIECAAAECfRbQAPb59p29XwJOS4AAAQIECBAg0HsBDWDvfwQAECDQBwFnJECAAAECBAgUAQ1gURACBAgQINBdAScjQIAAAQJ/IaAB/AsKvyFAgAABAgQIdE3AeQgQIPBMAQ3gMz38iQABAgQIECBAgEA3BJyCwAoCGsAVUHxEgAABAgQIECBAgACBNgustncN4GoyPidAgAABAgQIECBAgEDHBDSAHbvQlY/jUwIECBAgQIAAAQIECERoAP0UEOi6gPMRIECAAAECBAgQeFJAA/gkhF8IECDQRQFnIkCAAAECBAg8XUAD+HQNvydAgAABAt0RcBICBAgQIPAcAQ3gc0h8QIAAAQIECBBou4D9EyBAYGUBDeDKLj4lQIAAAQIECBAg0E4BuyaQCGgAExwlAgQIECBAgAABAgQItEmgtlcNYE1InQABAgQIECBAgAABAmsUuHlu33KWNU4zsq9pAEdG24SJ7YEAAQIECBAgQIAAAQKfEdAAfsbC7wh0S8BpCBAgQIAAAQIECDxLQAP4LBB/JECAQBcEnIEAAQIECBAgsJKABnAlFZ8RIECAAIH2Ctg5AQIECBBYVUADuCqNAgECBAgQIECgbQL2S4AAgVxAA5j7qBIgQIAAAQIECBBoh4BdEliDgAZwDUi+QoAAAQIECBAgQIAAgSYLrHVvGsC1SvkeAQIECBAgQIAAAQIEWi6gAWz5Ba68fZ8SIECAAAECBAgQIEDguQIawOea+IRAuwXsngABAgQIECBAgMAqAhrAVWB8TIAAgTYK2DMBAgQIECBAIBPQAGY6agQIECBAoD0CdkqAAAECBKoCGsAqkS8QIECAAAECBJouYH8ECBBYm4AGcG1OvkWAAAECBAgQIECgmQJ2RWAdAhrAdWD5KgECBAgQIECAAAECBJoksN69aADXK+b7BAgQIECAAAECBAj0VuDmuX3LWZoOowFs+g2ta3++TIAAAQIECBAgQIAAgdUFNICr26gQaJeA3RIgQIAAAQIECBCoCGgAK0DKBAgQaIOAPRIgQIAAAQIE1iKgAVyLku8QIECAAIHmCtgZAQIECBBYs4AGcM1UvkiAAAECBAgQaJqA/RAgQGB9AhrA9Xn5NgECBAgQIECAAIFmCNgFgQ0IaAA3gGYIAQIECBAgQIAAAQIEJimw0bU1gBuVM44AAQIECBAgQIAAAQItE9AAtuzCVt6uTwkQIECAAAECBAgQIFAX0ADWjXyDQLMF7I4AAQIECBAgQIDAGgU0gGuE8jUCBAg0UcCeCBAgQIAAAQLrEdAArkfLdwkQIECAQHME7IQAAQIECKxbQAO4bjIDCBAgQIAAAQKTFrA+AQIENiagAdyYm1EECBAgQIAAAQIEJiNgVQIDCGgAB8AzlAABAgQIECBAgAABAuMUGHQtDeCggsYTIECAAAECBAgQIECgJQIawJZc1Mrb9CkBAgQIECBAgAABAgTWLqABXLuVbxJoloDdECBAgAABAgQIEFingAZwnWC+ToAAgSYI2AMBAgQIECBAYCMCGsCNqBlDgAABAgQmJ2BlAgQIECCwYQEN4IbpDCRAgAABAgQIjFvAegQIEBhMQAM4mJ/RBAgQIECAAAECBMYjYBUCQxDQAA4B0RQECBAgQIAAAQIECBAYpcCw5tYADkvSPAQIECBAgAABAgQIEGi4gAaw4Re08vZ8SoAAAQIECBAgQIAAgfULaADXb2YEgckKWJ0AAQIECBAgQIDABgU0gBuEM4wAAQKTELAmAQIECBAgQGAQAQ3gIHrGEiBAgACB8QlYiQABAgQIDCygARyY0AQECBAgQIAAgVELmJ8AAQLDEdAADsfRLAQIECBAgAABAgRGI2BWAkMU0AAOEdNUBAgQIECAAAECBAgQGKbAsOfSAA5b1HwECBAgQIAAAQIECLRW4Oa5fctZWnuwJzeuAXwSoh2/2CUBAgQIECBAgAABAgQ2LqAB3LidkQTGK2A1AgQIECBAgAABAgMKaAAHBDScAAEC4xCwBgECBAgQIEBgGAIawGEomoMAAQIECIxOwMwECBAgQGBoAhrAoVGaiAABAgQIECAwbAHzESBAYLgCGsDhepqNAAECBAgQIECAwHAEzEJgBAIawBGgmpIAAQIECBAgQIAAAQKDCIxqrAZwVLLmJUCAAAECBAgQIECAQMMENIANu5CVt+NTAgQIECBAgAABAgQIDC6gARzc0AwERitgdgIECBAgQIAAAQJDEtAADgnSNAQIEBiFgDkJECBAgAABAsMU0AAOU9NcBAgQIEBgeAJmIkCAAAECQxfQAA6d1IQECBAgQIAAgUEFjCdAgMBoBDSAo3E1KwECBAgQIECAAIGNCRhFYIQCGsAR4pqaAAECBAgQIECAAAEC6xEY9Xc1gKMWNj8BAgQIECBAgAABAgTGJPDjb3xtZNEAjukiNraMUQQIECBAgAABAgQIEBiegAZweJZmIjBcAbMRIECAAAECBAgQGLKABnDIoKYjQIDAMATMQYAAAQIECBAYhYAGcBSq5iRAgAABAhsXMJIAAQIECIxMQAM4MloTEyBAgAABAgTWK+D7BAgQGK2ABnC0vmYnQIAAAQIECBAgsDYB3yIwBgEN4BiQLUGAAAECBAgQIECAAIFMYFw1DeC4pK1DgAABAgQIECBAgACBAQWOzh+fyvLNb/nlqSwawAEvYDTDzUqAAAECBAgQIECAAIHhC2gAh29qRgKDCRhNgAABAgQIECBAYEQCGsARwZqWAAECGxEwhgABAgQIECAwSgEN4Ch1zU2AAAECBNYu4JsECBAgQGDkAhrAkRNbgAABAgQIECBQE1AnQIDAeAQ0gONxtgoBAgQIECBAgACBlQV8SmCMAhrAMWJbigABAgQIECBAgAABAk8XGPfvNYDjFrceAQIECBAgQIAAAQITE7h5bt9ylolt7MmF3/ydXx5Znvzahn/RAG6YbhQDzUmAAAECBAgQIECAAIHRCWgAR2drZgLrE/BtAgQIECBAgAABAiMW0ACOGNj0BAgQWIuA7xAgQIAAAQIExiGgARyHsjUIECBAgMDqAioECBAgQGBsAhrAsVFbiAABAgQIECDwbAF/JkCAwHgFNIDj9bYaAQIECBAgQIAAgU8L+DeBCQhoACeAbkkCBAgQIECAAAECBPotMKnTawAnJW9dAgQIECBAgAABAgQIPEvgR372XZEle8NwLTUN4LPAJ/NHqxIgQIAAAQIECBAgQGD0AhrA0RtbgUAuoEqAAAECBAgQIEBgTAIawDFBW4YAAQIrCfiMAAECBAgQIDBOAQ3gOLWtRYAAAQIEPiPgdwQIECBAYOwCGsCxk1uQAAECBAgQIECAAAECkxHQAE7G3aoECBAgQIAAAQJ9FXBuAhMU0ABOEN/SBAgQIECAAAECBAj0S2DSp9UATvoGrE+AAAECBAgQIECAQGcEjs4fn2pyNIAT/VGzOAECBAgQIECAAAECBMYnoAEcn7WVCDxTwJ8IECBAgAABAgQIjFlAAzhmcMsRIECgCAgBAgQIECBAYBICGsBJqFuTAAECBPos4OwECBAgQGBiAhrAidFbmAABAgQIEOifgBMTIEBgsgIawMn6W50AAQIECBAgQKAvAs5JoAECGsAGXIItECBAgAABAgQIECDQbYGmnE4D2JSbsA8CBAgQIECAAAECBBovUHvjr+kH0ABO5IYsSoAAAQIECBAgQIAAgfELaADHb27Fvgs4PwECBAgQIECAAIEJCWgAJwRvWQIE+ing1AQIECBAgACBSQpoACepb20CBAgQ6JOAsxIgQIAAgYkLaAAnfgU2QIAAAQIECHRfwAkJECDQDAENYDPuwS4IECBAgAABAgS6KuBcBBokoAFs0GXYCgECBAgQIECAAAEC3RJo2mk0gE27EfshQIAAAQIECBAgQIDAiAQ0gCOCXXlanxIgQIAAAQIECBAgQGByAhrAydlbuW8CzkuAAAECBAgQIEBgwgIawAlfgOUJEOiHgFMSIECAAAECBJogoAFswi3YAwECBAh0WcDZCBAgQIBAYwQ0gI25ChshQIAAAQIEuifgRAQIEGiWgAawWfdhNwQIECBAgAABAl0RcA4CDRTQADbwUmyJAAECBAgQIECAAIF2CzR19xrApt6MfREgQIAAAQIECBAgsG6Bm+f2LWepTXh0/vhUltr4ptc1gGO5IYsQIECAAAECBAgQIEBg8gIawMnfgR10XcD5CBAgQIAAAQIECDREQAPYkIuwDQIEuingVAQIECBAgACBJgloAJt0G/ZCgAABAl0ScBYCBAgQINA4AQ1g467EhggQIECAAIH2CzgBAQIEmimgAWzmvdgVAQIECBAgQIBAWwXsm0CDBTSADb4cWyNAgAABAgQIECBAoF0CTd+tBrDpN2R/BAgQIECAAAECBAgMTSB746/UhrZQQyfSAI70YkxOgAABAgQIECBAgACB5ghoAJtzF3bSNQHnIUCAAAECBAgQINAwAQ1gwy7EdggQ6IaAUxAgQIAAAQIEmiigAWzirdgTAQIECLRZwN4JECBAgEBjBTSAjb0aGyNAgAABAgTaJ2DHBAgQaLaABrDZ92N3BAgQIECAAAECbRGwTwItENAAtuCSbJEAAQIECBAgQIAAgWYLtGV3GsC23JR9EiBAgAABAgQIECAQN8/tW86CKBfQAOY+G6waRoAAAQIECBAgQIAAgeYJaACbdyd21HYB+ydAgAABAgQIECDQUAENYEMvxrYIEGingF0TIECAAAEC3qY2KwAAEABJREFUBJosoAFs8u3YGwECBAi0ScBeCRAgQIBA4wU0gI2/IhskQIAAAQIEmi9ghwQIEGiHgAawHfdklwQIECBAgAABAk0VsC8CLRLQALbosmyVAAECBAgQIECAAIFmCbRtNxrAtt2Y/RIgQIAAAQIECBAgsKrA0fnjU1lWHdiTggZwqBdtMgIECBAgQIAAAQIECDRXQAPY3Luxs7YJ2C8BAgQIECBAgACBhgtoABt+QbZHgEA7BOySAAECBAgQINAGAQ1gG27JHgkQIECgyQL2RoAAAQIEWiOgAWzNVdkoAQIECBAg0DwBOyJAgEC7BDSA7bovuyVAgAABAgQIEGiKgH0QaKGABrCFl2bLBAgQIECAAAECBAhMVqCtq2sA23pz9k2AAAECBAgQIECggwI3z+1bzpK98VdqHSQZ6pE0gEPhNAkBAgQIECBAgAABAgSaL6ABbP4d2WHTBeyPAAECBAgQIECAQEsENIAtuSjbJECgmQJ2RYAAAQIECBBok4AGsE23Za8ECBAg0CQBeyFAgAABAq0T0AC27spsmAABAgQIEJi8gB0QIECgnQIawHbem10TIECAAAECBAhMSsC6BFosoAFs8eXZOgECBAgQIECAAAEC4xVo+2oawLbfoP0TIECAAAECBAgQaJFA9sZfqbXoKK3cqgZwoGszmAABAgQIECBAgAABAu0R0AC2567stGkC9kOAAAECBAgQIECgZQIawJZdmO0SINAMAbsgQIAAAQIECLRRQAPYxluzZwIECBCYpIC1CRAgQIBAawU0gK29OhsnQIAAAQIExi9gRQIECLRbQAPY7vuzewIECBAgQIAAgXEJWIdABwQ0gB24REcgQIAAAQIECBAgQGC0Al2ZXQPYlZt0DgIECBAgQIAAAQIdEDg6f3wqSweOONEjaAA3xG8QAQIECBAgQIAAAQIE2iegAWzfndnxpAWsT4AAAQIECBAgQKClAhrAll6cbRMgMBkBqxIgQIAAAQIE2iygAWzz7dk7AQIECIxTwFoECBAgQKD1AhrA1l+hAxAgQIAAAQKjF7ACAQIEuiGgAezGPToFAQIECBAgQIDAqATMS6BDAhrADl2moxAgQIAAAQIECBAgMFyBrs2mAezajToPAQIECBAgQIAAgQkK3Dy3bznLBLdm6WsCGsBrCGv/n28SIECAAAECBAgQIECgvQIawPbenZ2PW8B6BAgQIECAAAECBFouoAFs+QXaPgEC4xGwCgECBAgQIECgCwIawC7cojMQIECAwCgFzE2AAAECBDojoAHszFU6CAECBAgQIDB8ATMSIECgWwIawG7dp9MQIECAAAECBAgMS8A8BDoooAHs4KU6EgECBAgQIECAAAECgwl0dbQGsKs361wECBAgQIAAAQIERiCQvfFXarUlj84fn8pSG68+mIAGcE1+vkSAAAECBAgQIECAAIH2C2gA23+HTjBqAfMTIECAAAECBAgQ6IiABrAjF+kYBAiMRsCsBAgQIECAAIEuCWgAu3SbzkKAAAECwxQwFwECBAgQ6JyABrBzV+pABAgQIECAwOACZiBAgEA3BTSA3bxXpyJAgAABAgQIENiogHEEOiygAezw5ToaAQIECBAgQIAAAQLrE+j6tzWAXb9h5yNAgAABAgQIECCwDoHyll+W2lTZG3+lVhuv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';
+let hamsterReady = false;
+hamsterImg.onload = () => { hamsterReady = true; };
+
+function resize() {
+  const scale = Math.min(window.innerWidth / CANVAS_W, window.innerHeight / CANVAS_H);
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  canvas.style.width  = (CANVAS_W * scale) + 'px';
+  canvas.style.height = (CANVAS_H * scale) + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ══════════════════════════════════════════════════════
+//  INPUT
+// ══════════════════════════════════════════════════════
+const KEY = {};
+const KEY_JUST = {};
+window.addEventListener('keydown', e => {
+  if (!KEY[e.code]) KEY_JUST[e.code] = true;
+  KEY[e.code] = true;
+  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { KEY[e.code] = false; });
+
+function clearJust() { for (const k in KEY_JUST) delete KEY_JUST[k]; }
+function pressed(code) { return KEY_JUST[code] || false; }
+function held(code) { return KEY[code] || false; }
+
+// ══════════════════════════════════════════════════════
+//  GAME STATE
+// ══════════════════════════════════════════════════════
+let STATE = 'menu'; // menu | play | pause | end
+let levelIdx = 0;
+let attempts = 0;
+let totalAttempts = 0;
+
+// Echo recording
+let echo = null; // {frames:[{px,py,vx,vy,anim}], active:bool}
+let recFrames = [];
+
+// Live entities
+let player, tiles, flyers, doors, plates, bouncePads, spikes, exitPortal;
+let camX = 0, camY = 0;
+let levelW = 0, levelH = 0;
+
+// FX
+let glitchTimer  = 0;
+let failMsg      = '';
+let failAlpha    = 0;
+let deathFlash   = 0;
+let frameCount   = 0;
+
+// ══════════════════════════════════════════════════════
+//  MAP PARSING
+// ══════════════════════════════════════════════════════
+function parseLevel(lvl) {
+  const map = lvl.map;
+  levelH = map.length;
+  levelW = Math.max(...map.map(r => r.length));
+
+  tiles    = [];
+  flyers   = [];
+  doors    = [];
+  plates   = [];
+  bouncePads = [];
+  spikes   = [];
+  exitPortal = null;
+  player   = null;
+
+  for (let row = 0; row < map.length; row++) {
+    const line = map[row];
+    // Parse multi-char tokens (aa, bb, oo) then single chars
+    let col = 0;
+    while (col < line.length) {
+      const ch2 = line.substring(col, col+2);
+      const ch  = line[col];
+
+      if (ch2 === 'aa') {
+        // flyer spawn marker — just mark tile as empty
+        tiles.push({col, row, type:'empty'});
+        tiles.push({col:col+1, row, type:'empty'});
+        // The wave system handles spawning
+        col += 2; continue;
+      }
+      if (ch2 === 'bb') {
+        tiles.push({col, row, type:'empty'});
+        tiles.push({col:col+1, row, type:'empty'});
+        col += 2; continue;
+      }
+      if (ch2 === 'oo') {
+        bouncePads.push({col, row});
+        bouncePads.push({col:col+1, row});
+        tiles.push({col, row, type:'bounce'});
+        tiles.push({col:col+1, row, type:'bounce'});
+        col += 2; continue;
+      }
+
+      let type = 'empty';
+      if (ch === '#') type = 'wall';
+      else if (ch === '-') type = 'platform';
+      else if (ch === '^') type = 'spike';
+      else if (ch === 'o') { type = 'bounce'; bouncePads.push({col, row}); }
+      else if (ch === 'a') {
+        type = 'empty';
+        doors.push({col, row, channel:'A', open:false});
+      }
+      else if (ch === 'b') {
+        type = 'empty';
+        doors.push({col, row, channel:'B', open:false});
+      }
+      else if (ch === 'A') {
+        type = 'empty';
+        plates.push({col, row, channel:'A', pressed:false});
+      }
+      else if (ch === 'B') {
+        type = 'empty';
+        plates.push({col, row, channel:'B', pressed:false});
+      }
+      else if (ch === 'E') {
+        type = 'empty';
+        exitPortal = {col, row};
+      }
+      else if (ch === 'P') {
+        type = 'empty';
+        player = makePlayer(col * TILE + TILE/2, row * TILE + TILE - 1);
+      }
+
+      tiles.push({col, row, type});
+      col++;
+    }
+  }
+
+  // Build grid lookup for fast collision
+  buildGrid();
+}
+
+let grid = {}; // "col,row" -> tile type
+function buildGrid() {
+  grid = {};
+  for (const t of tiles) {
+    grid[t.col + ',' + t.row] = t.type;
+  }
+}
+
+function tileAt(col, row) {
+  return grid[col + ',' + row] || 'empty';
+}
+
+// ══════════════════════════════════════════════════════
+//  PLAYER
+// ══════════════════════════════════════════════════════
+function makePlayer(px, py) {
+  return {
+    px, py,
+    vx:0, vy:0,
+    onGround:false,
+    coyote:0,
+    jumpBuffer:0,
+    alive:true,
+    anim:'idle', // idle|run|jump|fall|dead
+    facing:1,
+    // half-extents from HITBOX Rect2(-3,-11,6,10): w=6,h=10
+    hw:3, hh:5,  // half-width, half-height
+    spawnX:0, spawnY:0,
+    tick:0
+  };
+}
+
+function respawnPlayer() {
+  const lvl = LEVELS[levelIdx];
+  const map = lvl.map;
+  for (let row = 0; row < map.length; row++) {
+    const line = map[row];
+    for (let col = 0; col < line.length; col++) {
+      if (line[col] === 'P') {
+        player.px = col * TILE + TILE/2;
+        player.py = row * TILE + TILE - 1;
+      }
+    }
+  }
+  player.vx = 0; player.vy = 0;
+  player.onGround = false; player.coyote = 0;
+  player.jumpBuffer = 0; player.alive = true;
+  player.anim = 'idle'; player.tick = 0;
+  flyers = [];
+  initWaves();
+  waveTimers = [];
+  const wvs = LEVELS[levelIdx].waves;
+  for (const w of wvs) waveTimers.push({...w, timer: w.first});
+}
+
+// ══════════════════════════════════════════════════════
+//  FLYERS
+// ══════════════════════════════════════════════════════
+let waveTimers = [];
+
+function initWaves() {
+  waveTimers = [];
+  const wvs = LEVELS[levelIdx].waves;
+  for (const w of wvs) {
+    waveTimers.push({y:w.y, interval:w.interval, speed:w.speed, bob:w.bob, timer:w.first});
+  }
+}
+
+function makeFlyer(wy, speed) {
+  const startX = levelW * TILE + 8;
+  const startY = wy * TILE;
+  return {px:startX, py:startY, speed, hw:4, hh:4, bobPhase:0, alive:true};
+}
+
+function updateWaves(dt) {
+  for (const wt of waveTimers) {
+    wt.timer -= 60 * dt; // convert to ticks
+    if (wt.timer <= 0) {
+      wt.timer = wt.interval;
+      flyers.push(makeFlyer(wt.y, wt.speed));
+    }
+  }
+}
+
+function updateFlyers(dt) {
+  for (const f of flyers) {
+    if (!f.alive) continue;
+    f.px -= f.speed * dt;
+    f.bobPhase += 2 * dt;
+    f.py += Math.sin(f.bobPhase) * 0.3;
+
+    // Off screen left
+    if (f.px < -20) { f.alive = false; continue; }
+
+    // Check stomp by player (player falling on top)
+    if (player.alive) {
+      const pdx = Math.abs(player.px - f.px);
+      const topDiff = (f.py - f.hh) - (player.py + player.hh);
+      if (pdx < f.hw + player.hw - 1 && topDiff > -4 && topDiff < 4 && player.vy > 0) {
+        f.alive = false;
+        player.vy = BOUNCE_VEL * 0.5;
+        continue;
+      }
+      // Side collision
+      if (pdx < f.hw + player.hw - 2 && Math.abs(player.py - f.py) < f.hh + player.hh - 2) {
+        killPlayer();
+        continue;
+      }
+    }
+
+    // Check stomp by echo
+    if (echo && echo.active) {
+      const edx = Math.abs(echo.px - f.px);
+      const eTop = (f.py - f.hh) - (echo.py + 5);
+      if (edx < f.hw + 3 - 1 && eTop > -4 && eTop < 4 && echo.vy > 0) {
+        f.alive = false;
+      }
+    }
+  }
+  flyers = flyers.filter(f => f.alive);
+}
+
+// ══════════════════════════════════════════════════════
+//  ECHO SYSTEM
+// ══════════════════════════════════════════════════════
+function startRecording() {
+  recFrames = [];
+}
+
+function recordFrame() {
+  if (!player.alive) return;
+  recFrames.push({
+    px: player.px, py: player.py,
+    vx: player.vx, vy: player.vy,
+    anim: player.anim, facing: player.facing
+  });
+}
+
+function saveEcho() {
+  if (recFrames.length >= ECHO_MIN_TICKS) {
+    echo = {
+      frames: recFrames.slice(),
+      frame: 0,
+      active: false,
+      px:0, py:0, vx:0, vy:0,
+      anim:'idle', facing:1,
+      done:false
+    };
+  }
+}
+
+function startEcho() {
+  if (!echo) return;
+  echo.frame = 0;
+  echo.active = true;
+  echo.done = false;
+  if (echo.frames.length > 0) {
+    const f = echo.frames[0];
+    echo.px = f.px; echo.py = f.py;
+    echo.vx = f.vx; echo.vy = f.vy;
+    echo.anim = f.anim; echo.facing = f.facing;
+  }
+}
+
+function updateEcho(dt) {
+  if (!echo || !echo.active || echo.done) return;
+  echo.frame++;
+  if (echo.frame >= echo.frames.length) {
+    echo.done = true; echo.active = false; return;
+  }
+  const f = echo.frames[echo.frame];
+  echo.px = f.px; echo.py = f.py;
+  echo.vx = f.vx; echo.vy = f.vy;
+  echo.anim = f.anim; echo.facing = f.facing;
+
+  // Echo presses plates
+  checkEchoPlates();
+}
+
+function checkEchoPlates() {
+  if (!echo || !echo.active) return;
+  for (const p of plates) {
+    const pcx = p.col * TILE + TILE/2;
+    const pcy = p.row * TILE + TILE/2;
+    const dx  = Math.abs(echo.px - pcx);
+    const dy  = Math.abs(echo.py - pcy);
+    if (dx < TILE && dy < TILE) {
+      p.pressed = true;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  COLLISION
+// ══════════════════════════════════════════════════════
+function solidAt(col, row) {
+  const t = tileAt(col, row);
+  if (t === 'wall') return true;
+  // Check doors
+  for (const d of doors) {
+    if (d.col === col && d.row === row && !d.open) return true;
+  }
+  return false;
+}
+
+function platformAt(col, row) {
+  return tileAt(col, row) === 'platform';
+}
+
+function moveEntity(ent, dt) {
+  // Gravity
+  if (ent.vy < 0) ent.vy += GRAVITY_UP  * dt;
+  else             ent.vy += GRAVITY_DOWN * dt;
+  if (ent.vy > MAX_FALL) ent.vy = MAX_FALL;
+
+  // Move X
+  ent.px += ent.vx * dt;
+  resolveX(ent);
+
+  // Move Y
+  ent.py += ent.vy * dt;
+  const wasOnGround = ent.onGround;
+  ent.onGround = false;
+  resolveY(ent);
+
+  return wasOnGround;
+}
+
+function resolveX(ent) {
+  const hw = ent.hw || 3;
+  const hh = ent.hh || 5;
+  const left   = Math.floor((ent.px - hw) / TILE);
+  const right  = Math.floor((ent.px + hw - 0.01) / TILE);
+  const top    = Math.floor((ent.py - hh*2) / TILE);
+  const bottom = Math.floor((ent.py - 1) / TILE);
+
+  for (let row = top; row <= bottom; row++) {
+    if (solidAt(left, row)) {
+      ent.px = left * TILE + TILE + hw;
+      ent.vx = 0;
+    }
+    if (solidAt(right, row)) {
+      ent.px = right * TILE - hw;
+      ent.vx = 0;
+    }
+  }
+}
+
+function resolveY(ent) {
+  const hw = ent.hw || 3;
+  const hh = ent.hh || 5;
+
+  const bottom = Math.floor((ent.py - 0.1) / TILE);
+  const top    = Math.floor((ent.py - hh*2 - 0.1) / TILE);
+  const colL   = Math.floor((ent.px - hw + 1) / TILE);
+  const colR   = Math.floor((ent.px + hw - 2) / TILE);
+
+  // Floor collision
+  if (ent.vy >= 0) {
+    // Solid tiles
+    for (let col = colL; col <= colR; col++) {
+      if (solidAt(col, bottom)) {
+        ent.py = bottom * TILE;
+        ent.vy = 0;
+        ent.onGround = true;
+        break;
+      }
+    }
+    // Platform tiles (one-way)
+    if (!ent.onGround) {
+      for (let col = colL; col <= colR; col++) {
+        if (platformAt(col, bottom)) {
+          const prevBottom = Math.floor((ent.py - 0.1 - ent.vy * (1/60)) / TILE);
+          if (prevBottom < bottom) {
+            ent.py = bottom * TILE;
+            ent.vy = 0;
+            ent.onGround = true;
+            break;
+          }
+        }
+      }
+    }
+    // Bounce pads
+    if (ent.onGround) {
+      for (let col = colL; col <= colR; col++) {
+        if (tileAt(col, bottom) === 'bounce') {
+          ent.vy = BOUNCE_VEL;
+          ent.onGround = false;
+          break;
+        }
+      }
+    }
+  }
+
+  // Ceiling collision
+  if (ent.vy < 0) {
+    for (let col = colL; col <= colR; col++) {
+      if (solidAt(col, top)) {
+        ent.py = (top + 1) * TILE + hh*2;
+        ent.vy = 0;
+        break;
+      }
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  PLAYER UPDATE
+// ══════════════════════════════════════════════════════
+function updatePlayer(dt) {
+  if (!player.alive) return;
+
+  const left  = held('KeyA') || held('ArrowLeft');
+  const right = held('KeyD') || held('ArrowRight');
+  const jump  = held('Space') || held('ArrowUp') || held('KeyW');
+  const jumpP = pressed('Space') || pressed('ArrowUp') || pressed('KeyW');
+
+  // Horizontal
+  const targetVx = right ? RUN_SPEED : left ? -RUN_SPEED : 0;
+  const isGround = player.onGround;
+  const acc = isGround
+    ? (targetVx !== 0 ? ACCEL : DECEL)
+    : (targetVx !== 0 ? AIR_ACCEL : AIR_DECEL);
+  
+  if (Math.abs(targetVx - player.vx) < acc * dt) player.vx = targetVx;
+  else player.vx += Math.sign(targetVx - player.vx) * acc * dt;
+
+  if (right) player.facing = 1;
+  if (left)  player.facing = -1;
+
+  // Coyote time
+  if (player.onGround) player.coyote = COYOTE_TICKS;
+  else if (player.coyote > 0) player.coyote--;
+
+  // Jump buffer
+  if (jumpP) player.jumpBuffer = BUFFER_TICKS;
+  else if (player.jumpBuffer > 0) player.jumpBuffer--;
+
+  // Jump
+  if (player.jumpBuffer > 0 && player.coyote > 0) {
+    player.vy = JUMP_VEL;
+    player.coyote = 0;
+    player.jumpBuffer = 0;
+  }
+
+  // Jump cut
+  if (!jump && player.vy < JUMP_VEL * JUMP_CUT) {
+    player.vy = JUMP_VEL * JUMP_CUT;
+  }
+
+  moveEntity(player, dt);
+
+  // Spike check
+  checkSpikes();
+
+  // Plate check
+  checkPlates();
+
+  // Exit check
+  checkExit();
+
+  // Animation
+  if (!player.onGround) {
+    player.anim = player.vy < 0 ? 'jump' : 'fall';
+  } else if (Math.abs(player.vx) > 5) {
+    player.anim = 'run';
+  } else {
+    player.anim = 'idle';
+  }
+
+  // Record
+  recordFrame();
+}
+
+function checkSpikes() {
+  const col = Math.floor(player.px / TILE);
+  const row = Math.floor((player.py) / TILE);
+  for (let dc = -1; dc <= 1; dc++) {
+    for (let dr = -1; dr <= 1; dr++) {
+      if (tileAt(col+dc, row+dr) === 'spike') {
+        // Simple point-in-tile check
+        const sx = (col+dc)*TILE, sy = (row+dr)*TILE;
+        if (player.px > sx+1 && player.px < sx+TILE-1 &&
+            player.py > sy+2 && player.py < sy+TILE) {
+          killPlayer();
+          return;
+        }
+      }
+    }
+  }
+}
+
+function checkPlates() {
+  // Reset plates pressed by player this frame
+  for (const p of plates) {
+    if (!p._echoPressing) p.pressed = false;
+  }
+  for (const p of plates) {
+    p._echoPressing = false;
+    const pcx = p.col * TILE + TILE/2;
+    const pcy = p.row * TILE + TILE/2;
+    const dx  = Math.abs(player.px - pcx);
+    const dy  = Math.abs(player.py - pcy);
+    if (dx < TILE && dy < TILE) p.pressed = true;
+  }
+  // Update doors
+  for (const d of doors) {
+    const platOn = plates.some(p => p.channel === d.channel && p.pressed);
+    d.open = platOn;
+  }
+}
+
+function checkExit() {
+  if (!exitPortal) return;
+  const ex = exitPortal.col * TILE + TILE/2;
+  const ey = exitPortal.row * TILE + TILE/2;
+  if (Math.abs(player.px - ex) < TILE && Math.abs(player.py - ey) < TILE) {
+    nextLevel();
+  }
+}
+
+function killPlayer(manual) {
+  if (!player.alive) return;
+  player.alive = false;
+  saveEcho();
+  deathFlash = 1.0;
+  glitchTimer = 0.4;
+  failMsg = FAIL_MSGS[Math.floor(Math.random() * FAIL_MSGS.length)];
+  failAlpha = 1.5;
+  attempts++;
+  totalAttempts++;
+
+  setTimeout(() => {
+    respawnPlayer();
+    startRecording();
+    startEcho();
+    // Reset plate _echoPressing flags
+    for (const p of plates) p._echoPressing = false;
+  }, manual ? 200 : 500);
+}
+
+function rebound() {
+  if (!player.alive) return;
+  killPlayer(true);
+}
+
+// ══════════════════════════════════════════════════════
+//  LEVEL MANAGEMENT
+// ══════════════════════════════════════════════════════
+function loadLevel(idx) {
+  levelIdx = idx;
+  attempts = 0;
+  echo     = null;
+  recFrames = [];
+  parseLevel(LEVELS[idx]);
+  initWaves();
+  startRecording();
+  glitchTimer = 0.3;
+  deathFlash  = 0;
+  failAlpha   = 0;
+}
+
+function nextLevel() {
+  if (levelIdx >= LEVELS.length - 1) {
+    STATE = 'end';
+  } else {
+    loadLevel(levelIdx + 1);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  CAMERA
+// ══════════════════════════════════════════════════════
+function updateCamera() {
+  const targetX = player.px - CANVAS_W / 2;
+  const targetY = player.py - CANVAS_H / 2;
+  const maxX = levelW * TILE - CANVAS_W;
+  const maxY = levelH * TILE - CANVAS_H;
+  const clampX = Math.max(0, Math.min(maxX, targetX));
+  const clampY = Math.max(0, Math.min(maxY, targetY));
+  camX += (clampX - camX) * 0.12;
+  camY += (clampY - camY) * 0.12;
+}
+
+// ══════════════════════════════════════════════════════
+//  DRAWING
+// ══════════════════════════════════════════════════════
+function drawGame() {
+  // Background
+  ctx.fillStyle = COL_BG;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  ctx.save();
+  ctx.translate(-Math.round(camX), -Math.round(camY));
+
+  drawTiles();
+  drawDoors();
+  drawPlates();
+  drawExit();
+  drawEcho();
+  drawPlayer();
+  drawFlyers();
+
+  ctx.restore();
+
+  drawScreenFX();
+  drawHUD();
+  drawHints();
+  drawFailMsg();
+}
+
+function drawTiles() {
+  const startCol = Math.floor(camX / TILE);
+  const endCol   = Math.ceil((camX + CANVAS_W) / TILE);
+  const startRow = Math.floor(camY / TILE);
+  const endRow   = Math.ceil((camY + CANVAS_H) / TILE);
+
+  for (let row = startRow; row <= endRow; row++) {
+    for (let col = startCol; col <= endCol; col++) {
+      const t = tileAt(col, row);
+      const x = col * TILE, y = row * TILE;
+      if (t === 'wall') {
+        ctx.fillStyle = COL_WALL;
+        ctx.fillRect(x, y, TILE, TILE);
+        // Subtle highlight edge
+        ctx.fillStyle = COL_WALL2;
+        ctx.fillRect(x, y, TILE, 1);
+        ctx.fillRect(x, y, 1, TILE);
+      } else if (t === 'platform') {
+        ctx.fillStyle = COL_PLATFORM;
+        ctx.fillRect(x, y, TILE, 2);
+      } else if (t === 'spike') {
+        ctx.fillStyle = COL_SPIKE;
+        ctx.beginPath();
+        ctx.moveTo(x+1, y+TILE);
+        ctx.lineTo(x+TILE/2, y+2);
+        ctx.lineTo(x+TILE-1, y+TILE);
+        ctx.closePath();
+        ctx.fill();
+      } else if (t === 'bounce') {
+        ctx.fillStyle = COL_BOUNCE;
+        ctx.fillRect(x, y+TILE-3, TILE, 3);
+        // Animated spring lines
+        const ph = (frameCount * 0.05) % 1;
+        ctx.fillStyle = '#fde68a';
+        ctx.fillRect(x+1, y+TILE-5+Math.round(Math.sin(ph*Math.PI*2)*1), TILE-2, 1);
+      }
+    }
+  }
+}
+
+function drawDoors() {
+  for (const d of doors) {
+    if (d.open) continue;
+    const x = d.col * TILE, y = d.row * TILE;
+    ctx.fillStyle = d.channel === 'A' ? COL_DOOR_A : COL_DOOR_B;
+    ctx.fillRect(x, y, TILE, TILE);
+    // Pattern
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
+  }
+}
+
+function drawPlates() {
+  for (const p of plates) {
+    const x = p.col * TILE, y = p.row * TILE;
+    const col = p.channel === 'A' ? COL_PLATE_A : COL_PLATE_B;
+    ctx.fillStyle = p.pressed ? col : '#4b5563';
+    ctx.fillRect(x, y+TILE-3, TILE, 3);
+    if (p.pressed) {
+      ctx.fillStyle = col;
+      ctx.globalAlpha = 0.3;
+      ctx.fillRect(x-1, y, TILE+2, TILE);
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function drawExit() {
+  if (!exitPortal) return;
+  const x = exitPortal.col * TILE, y = exitPortal.row * TILE;
+  const ph = (frameCount * 0.04) % 1;
+  const r  = 2 + Math.sin(ph * Math.PI * 2) * 1;
+  ctx.fillStyle = COL_EXIT;
+  ctx.globalAlpha = 0.7 + Math.sin(ph * Math.PI * 2) * 0.3;
+  ctx.beginPath();
+  ctx.arc(x + TILE/2, y + TILE/2, r + 2, 0, Math.PI*2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x + TILE/2, y + TILE/2, r, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function drawPlayer() {
+  if (!player || !player.alive) return;
+  const x = Math.round(player.px - player.hw);
+  const y = Math.round(player.py - player.hh*2);
+  const w = player.hw * 2;
+  const h = player.hh * 2;
+
+  // Body
+  ctx.fillStyle = COL_PLAYER;
+  ctx.fillRect(x, y, w, h);
+
+  // Eyes
+  ctx.fillStyle = '#0d0b1a';
+  if (player.facing === 1) {
+    ctx.fillRect(x+w-3, y+1, 2, 2);
+  } else {
+    ctx.fillRect(x+1, y+1, 2, 2);
+  }
+
+  // Run animation legs
+  if (player.anim === 'run') {
+    const leg = Math.sin(frameCount * 0.3) > 0 ? 1 : -1;
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(x+1, y+h, 2, 2+leg);
+    ctx.fillRect(x+w-3, y+h, 2, 2-leg);
+  } else {
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(x+1, y+h, 2, 2);
+    ctx.fillRect(x+w-3, y+h, 2, 2);
+  }
+}
+
+function drawEcho() {
+  if (!echo || !echo.active) return;
+  const x = Math.round(echo.px - 3);
+  const y = Math.round(echo.py - 10);
+
+  // Scanline glitch effect
+  const glitch = Math.random() < 0.05 ? (Math.random()-0.5)*3 : 0;
+
+  // Cyan shadow body
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = '#0e7490';
+  ctx.fillRect(x+1+glitch, y+1, 6, 10);
+  ctx.globalAlpha = 1;
+
+  // Outline
+  ctx.strokeStyle = COL_ECHO;
+  ctx.lineWidth   = 1;
+  ctx.strokeRect(x+glitch+0.5, y+0.5, 6, 10);
+
+  // Scanlines on echo
+  ctx.fillStyle = COL_ECHO;
+  ctx.globalAlpha = 0.15;
+  for (let sy = y; sy < y+10; sy += 2) {
+    ctx.fillRect(x+glitch, sy, 6, 1);
+  }
+  ctx.globalAlpha = 1;
+
+  // Echo eyes
+  ctx.fillStyle = COL_ECHO;
+  ctx.globalAlpha = 0.8;
+  if (echo.facing === 1) {
+    ctx.fillRect(x+4+glitch, y+1, 2, 2);
+  } else {
+    ctx.fillRect(x+glitch, y+1, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawFlyers() {
+  for (const f of flyers) {
+    if (!f.alive) continue;
+    const x = Math.round(f.px - f.hw);
+    const y = Math.round(f.py - f.hh);
+    // Body
+    ctx.fillStyle = COL_FLYER;
+    ctx.fillRect(x, y, f.hw*2, f.hh*2);
+    // Cat ears
+    ctx.fillRect(x, y-2, 3, 2);
+    ctx.fillRect(x+f.hw*2-3, y-2, 3, 2);
+    // Eyes
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(x+1, y+2, 2, 2);
+    ctx.fillRect(x+f.hw*2-3, y+2, 2, 2);
+    // Wing flap
+    const flap = Math.sin(frameCount * 0.4) > 0;
+    ctx.fillStyle = '#fed7aa';
+    if (flap) {
+      ctx.fillRect(x-3, y+1, 3, 3);
+      ctx.fillRect(x+f.hw*2, y+1, 3, 3);
+    } else {
+      ctx.fillRect(x-2, y+3, 2, 2);
+      ctx.fillRect(x+f.hw*2, y+3, 2, 2);
+    }
+  }
+}
+
+function drawScreenFX() {
+  // Vignette
+  const vgr = ctx.createRadialGradient(CANVAS_W/2, CANVAS_H/2, CANVAS_H*0.3, CANVAS_W/2, CANVAS_H/2, CANVAS_H*0.8);
+  vgr.addColorStop(0, 'rgba(0,0,0,0)');
+  vgr.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = vgr;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  for (let y = 0; y < CANVAS_H; y += 2) {
+    ctx.fillRect(0, y, CANVAS_W, 1);
+  }
+
+  // Death flash
+  if (deathFlash > 0) {
+    ctx.fillStyle = `rgba(244,114,182,${deathFlash * 0.4})`;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    deathFlash -= 0.08;
+  }
+
+  // Glitch effect
+  if (glitchTimer > 0) {
+    if (Math.random() < 0.4) {
+      const sliceH = 2 + Math.floor(Math.random() * 8);
+      const sliceY = Math.floor(Math.random() * CANVAS_H);
+      const shift  = (Math.random() - 0.5) * 10;
+      ctx.save();
+      const imgData = ctx.getImageData(0, sliceY, CANVAS_W, sliceH);
+      ctx.putImageData(imgData, shift, sliceY);
+      ctx.restore();
+    }
+    glitchTimer -= 1/60;
+  }
+}
+
+function drawHUD() {
+  const lvl = LEVELS[levelIdx];
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, 0, CANVAS_W, 14);
+
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font      = '5px monospace';
+  ctx.textBaseline = 'top';
+  ctx.fillText(lvl.id.toUpperCase() + ': ' + lvl.title, 3, 3);
+  ctx.fillText('ATT: ' + attempts, CANVAS_W - 45, 3);
+
+  // Echo progress bar
+  if (echo && echo.active) {
+    const progress = echo.frame / echo.frames.length;
+    ctx.fillStyle = '#1e3a3a';
+    ctx.fillRect(CANVAS_W/2 - 30, 2, 60, 4);
+    ctx.fillStyle = COL_ECHO;
+    ctx.fillRect(CANVAS_W/2 - 30, 2, 60 * progress, 4);
+    ctx.strokeStyle = COL_ECHO;
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(CANVAS_W/2 - 30, 2, 60, 4);
+    // Label
+    ctx.fillStyle = COL_ECHO;
+    ctx.font = '4px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('ECHO', CANVAS_W/2, 8);
+    ctx.textAlign = 'left';
+  }
+
+  // R key hint
+  ctx.fillStyle = 'rgba(100,116,139,0.6)';
+  ctx.font = '4px monospace';
+  ctx.fillText('R: REBOUND', 3, CANVAS_H - 7);
+  ctx.fillText('ESC: PAUSE', CANVAS_W - 48, CANVAS_H - 7);
+}
+
+function drawHints() {
+  if (!LEVELS[levelIdx]) return;
+  const hints = LEVELS[levelIdx].hints;
+  ctx.font = '4px monospace';
+  ctx.textAlign = 'center';
+
+  for (const h of hints) {
+    const wx = h.cx * TILE - camX;
+    const wy = h.cy * TILE - camY;
+    if (wx < -50 || wx > CANVAS_W + 50) continue;
+    if (wy < -20 || wy > CANVAS_H + 20) continue;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    const tw = ctx.measureText(h.text).width;
+    ctx.fillRect(wx - tw/2 - 2, wy - 2, tw + 4, 7);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(h.text, wx, wy);
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawFailMsg() {
+  if (failAlpha <= 0) return;
+  const alpha = Math.min(1, failAlpha);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = '12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = COL_FAIL;
+  ctx.fillText(failMsg, CANVAS_W/2 + (Math.random()<0.1?(Math.random()-0.5)*4:0), CANVAS_H/2);
+  ctx.font = '5px monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('PRESS R TO REBOUND MANUALLY', CANVAS_W/2, CANVAS_H/2 + 12);
+  ctx.restore();
+  failAlpha -= 0.015;
+}
+
+// ══════════════════════════════════════════════════════
+//  MENU SCREENS
+// ══════════════════════════════════════════════════════
+function drawMenu() {
+  ctx.fillStyle = COL_BG;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  for (let y = 0; y < CANVAS_H; y += 2) ctx.fillRect(0, y, CANVAS_W, 1);
+
+  // Title glitch
+  const gx = Math.random() < 0.05 ? (Math.random()-0.5)*3 : 0;
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = COL_ECHO;
+  ctx.font = '24px monospace';
+  ctx.fillText('RE:BOUND', CANVAS_W/2 + gx, 60);
+
+  ctx.fillStyle = '#475569';
+  ctx.font = '5px monospace';
+  ctx.fillText('a game about failing forward', CANVAS_W/2, 76);
+
+  ctx.fillStyle = COL_PLAYER;
+  ctx.font = '6px monospace';
+  const blink = Math.sin(frameCount * 0.08) > 0;
+  if (blink) ctx.fillText('PRESS SPACE TO START  |  Q: QUIT', CANVAS_W/2, 110);
+
+  ctx.fillStyle = '#4b5563';
+  ctx.font = '4px monospace';
+  ctx.fillText('A/D: MOVE  |  SPACE: JUMP  |  R: REBOUND  |  ESC: PAUSE', CANVAS_W/2, 140);
+  ctx.fillText('REVERSE-ENGINEERED FROM GODOT 4.7.2 PCK', CANVAS_W/2, 160);
+
+  ctx.textAlign = 'left';
+
+  // Vignette
+  const vgr = ctx.createRadialGradient(CANVAS_W/2, CANVAS_H/2, 40, CANVAS_W/2, CANVAS_H/2, 110);
+  vgr.addColorStop(0, 'rgba(0,0,0,0)');
+  vgr.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.fillStyle = vgr;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+}
+
+let previousState = 'menu';
+
+function drawPause() {
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = COL_PLAYER;
+  ctx.font = '14px monospace';
+  ctx.fillText('PAUSED', CANVAS_W/2, CANVAS_H/2 - 20);
+  ctx.font = '6px monospace';
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText('ESC / P: RESUME', CANVAS_W/2, CANVAS_H/2);
+  ctx.fillStyle = '#a78bfa';
+  ctx.fillText('M: MAIN MENU', CANVAS_W/2, CANVAS_H/2 + 12);
+  ctx.fillStyle = '#f87171';
+  ctx.fillText('Q: QUIT GAME', CANVAS_W/2, CANVAS_H/2 + 24);
+  ctx.textAlign = 'left';
+}
+
+function drawQuit() {
+  ctx.fillStyle = '#080811';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  for (let y = 0; y < CANVAS_H; y += 2) ctx.fillRect(0, y, CANVAS_W, 1);
+
+  // Header
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f43f5e';
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText('QUIT GAME', CANVAS_W/2, 28);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '5px monospace';
+  ctx.fillText('ARE YOU SURE YOU WANT TO QUIT?', CANVAS_W/2, 38);
+
+  // Hamster meme on quit screen
+  if (hamsterReady) {
+    const iw = 100, ih = 90;
+    const ix = CANVAS_W/2 - iw/2;
+    const iy = 46;
+
+    // Card frame
+    ctx.fillStyle = '#1e1b2e';
+    ctx.fillRect(ix - 4, iy - 4, iw + 8, ih + 8);
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ix - 4, iy - 4, iw + 8, ih + 8);
+
+    ctx.drawImage(hamsterImg, ix, iy, iw, ih);
+
+    // Caption
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 8px monospace';
+    ctx.fillText('RAGEQUIT? GG!', CANVAS_W/2, iy + ih + 13);
+  }
+
+  ctx.font = '6px monospace';
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText('[SPACE] NEVER GIVE UP! RESUME', CANVAS_W/2, CANVAS_H - 22);
+  ctx.fillStyle = '#f87171';
+  ctx.fillText('[Q] / [ESC] CONFIRM QUIT & CLOSE', CANVAS_W/2, CANVAS_H - 10);
+  ctx.textAlign = 'left';
+}
+
+function drawEnd() {
+  ctx.fillStyle = COL_BG;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  for (let y = 0; y < CANVAS_H; y += 2) ctx.fillRect(0, y, CANVAS_W, 1);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = COL_EXIT;
+  ctx.font = '16px monospace';
+  ctx.fillText('YOU DID IT.', CANVAS_W/2, 55);
+
+  ctx.fillStyle = COL_ECHO;
+  ctx.font = '7px monospace';
+  ctx.fillText('ALL 7 LEVELS CLEARED', CANVAS_W/2, 78);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '5px monospace';
+  ctx.fillText('total attempts: ' + totalAttempts, CANVAS_W/2, 100);
+
+  ctx.fillStyle = COL_PLAYER;
+  ctx.font = '5px monospace';
+  const msg = totalAttempts < 20 ? 'CARRY OMG' : totalAttempts < 50 ? 'NOT BAD THO' : totalAttempts < 100 ? 'GIT GUDDED' : 'CERTIFIED GRINDER';
+  ctx.fillText(msg, CANVAS_W/2, 112);
+
+  ctx.fillStyle = '#475569';
+  ctx.font = '4px monospace';
+  const blink = Math.sin(frameCount * 0.08) > 0;
+  if (blink) ctx.fillText('PRESS SPACE TO PLAY AGAIN', CANVAS_W/2, 140);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.font = '4px monospace';
+  ctx.fillText('RE:BOUND  |  2024  |  FAIZEEN HOQUE', CANVAS_W/2, 162);
+  ctx.fillText('REVERSE-ENGINEERED FOR EDUCATIONAL PURPOSES', CANVAS_W/2, 170);
+  ctx.textAlign = 'left';
+
+  const vgr = ctx.createRadialGradient(CANVAS_W/2, CANVAS_H/2, 40, CANVAS_W/2, CANVAS_H/2, 120);
+  vgr.addColorStop(0, 'rgba(0,0,0,0)');
+  vgr.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = vgr;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+}
+
+// ══════════════════════════════════════════════════════
+//  MAIN LOOP
+// ══════════════════════════════════════════════════════
+let lastTime = 0;
+
+function loop(ts) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  frameCount++;
+
+  // ── Menu ──
+  if (STATE === 'menu') {
+    drawMenu();
+    if (pressed('Space') || pressed('Enter')) {
+      STATE = 'play';
+      levelIdx = 0;
+      totalAttempts = 0;
+      loadLevel(0);
+    }
+    if (pressed('KeyQ')) {
+      previousState = 'menu';
+      STATE = 'quit';
+    }
+    clearJust(); return;
+  }
+
+  // ── Pause ──
+  if (STATE === 'pause') {
+    drawGame();
+    drawPause();
+    if (pressed('Escape') || pressed('KeyP')) STATE = 'play';
+    if (pressed('KeyM')) { STATE = 'menu'; }
+    if (pressed('KeyQ')) { previousState = 'pause'; STATE = 'quit'; }
+    clearJust(); return;
+  }
+
+  // ── Quit Screen ──
+  if (STATE === 'quit') {
+    drawQuit();
+    if (pressed('Space')) {
+      STATE = (previousState === 'pause') ? 'play' : 'menu';
+    }
+    if (pressed('Escape') || pressed('KeyQ')) {
+      window.close();
+      ctx.fillStyle = '#080811';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = '#facc15';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('THANKS FOR PLAYING RE:BOUND!', CANVAS_W/2, CANVAS_H/2 - 10);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '6px monospace';
+      ctx.fillText('You can now safely close this window.', CANVAS_W/2, CANVAS_H/2 + 10);
+    }
+    clearJust(); return;
+  }
+
+  // ── End ──
+  if (STATE === 'end') {
+    drawEnd();
+    if (pressed('Space') || pressed('Enter')) {
+      STATE = 'menu';
+    }
+    clearJust(); return;
+  }
+
+  // ── Play ──
+  // R key = rebound
+  if (pressed('KeyR') && player && player.alive) rebound();
+  // Pause
+  if (pressed('Escape') || pressed('KeyP')) STATE = 'pause';
+
+  // Reset plate echo-pressing flag
+  for (const p of plates) p._echoPressing = false;
+
+  updateEcho(dt);
+
+  // After echo updates plates, mark them as echo-pressing so player check doesn't clear
+  for (const p of plates) {
+    if (p.pressed) p._echoPressing = true;
+  }
+
+  updatePlayer(dt);
+  updateWaves(dt);
+  updateFlyers(dt);
+  updateCamera();
+
+  // Fade fail alpha
+  if (failAlpha > 0) failAlpha -= dt * 0.5;
+
+  drawGame();
+  clearJust();
+}
+
+// ══════════════════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════════════════
+requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>

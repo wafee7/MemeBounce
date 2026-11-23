@@ -1,0 +1,61 @@
+[gd_resource type="Theme" format=3 uid="uid://wmgcxxra5u34"]
+
+[ext_resource type="FontFile" uid="uid://cgcc3scqelnj6" path="res://assets/fonts/pixel_font.png" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="focus_ring"]
+draw_center = false
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.133333, 0.827451, 0.933333, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="btn_focus"]
+content_margin_left = 6.0
+content_margin_top = 2.0
+content_margin_right = 6.0
+content_margin_bottom = 2.0
+bg_color = Color(0.239216, 0.192157, 0.439216, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.133333, 0.827451, 0.933333, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="btn_normal"]
+content_margin_left = 6.0
+content_margin_top = 2.0
+content_margin_right = 6.0
+content_margin_bottom = 2.0
+bg_color = Color(0.129412, 0.105882, 0.219608, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.239216, 0.192157, 0.439216, 1)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+bg_color = Color(0.0627451, 0.0941176, 0.152941, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.654902, 0.545098, 0.980392, 1)
+anti_aliasing = false
+
+[resource]
+default_font = ExtResource("1")
+default_font_size = 8
+Button/colors/font_color = Color(0.839216, 0.870588, 0.937255, 1)
+Button/colors/font_focus_color = Color(0.647059, 0.952941, 0.988235, 1)
+Button/colors/font_hover_color = Color(0.647059, 0.952941, 0.988235, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
+Button/styles/focus = SubResource("focus_ring")
+Button/styles/hover = SubResource("btn_focus")
+Button/styles/normal = SubResource("btn_normal")
+Button/styles/pressed = SubResource("btn_focus")
+Label/colors/font_color = Color(0.839216, 0.870588, 0.937255, 1)
+PanelContainer/styles/panel = SubResource("panel")

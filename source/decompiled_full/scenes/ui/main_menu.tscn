@@ -1,0 +1,123 @@
+[gd_scene format=3 uid="uid://bp6a7atc2kxlj"]
+
+[ext_resource type="Script" uid="uid://dwexk2pps6mle" path="res://scripts/main_menu.gd" id="1"]
+[ext_resource type="Script" uid="uid://bnfsp12jsqrpm" path="res://scripts/level_background.gd" id="2"]
+[ext_resource type="Shader" uid="uid://fud0xcgw1mio" path="res://shaders/echo.gdshader" id="3"]
+[ext_resource type="Texture2D" uid="uid://d4gw561xr3hvh" path="res://assets/sprites/shadow.png" id="4"]
+
+[sub_resource type="ShaderMaterial" id="echo_mat"]
+shader = ExtResource("3")
+shader_parameter/tint = Color(0.133333, 0.827451, 0.933333, 1)
+shader_parameter/alpha = 0.55
+shader_parameter/glitch = 0.0
+
+[node name="MainMenu" type="Control" unique_id=287748163]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 320.0
+offset_bottom = 180.0
+script = ExtResource("1")
+
+[node name="Background" type="Node2D" parent="." unique_id=2104627545]
+script = ExtResource("2")
+autoscroll_speed = 12.0
+
+[node name="Floor" type="ColorRect" parent="." unique_id=1127416980]
+layout_mode = 0
+offset_top = 150.0
+offset_right = 320.0
+offset_bottom = 180.0
+color = Color(0.129412, 0.105882, 0.219608, 1)
+
+[node name="FloorEdge" type="ColorRect" parent="." unique_id=1584281396]
+layout_mode = 0
+offset_top = 150.0
+offset_right = 320.0
+offset_bottom = 151.0
+color = Color(0.482353, 0.423529, 0.815686, 1)
+
+[node name="EchoSprite" type="Sprite2D" parent="." unique_id=462863211]
+material = SubResource("echo_mat")
+position = Vector2(138, 142)
+texture = ExtResource("4")
+hframes = 8
+vframes = 4
+frame = 8
+
+[node name="Robot" type="Sprite2D" parent="." unique_id=1787738083]
+position = Vector2(162, 142)
+texture = ExtResource("4")
+hframes = 8
+vframes = 4
+frame = 8
+
+[node name="TitleGhost" type="Label" parent="." unique_id=421071433]
+visible = false
+modulate = Color(0.956863, 0.447059, 0.713725, 0.7)
+layout_mode = 0
+offset_left = 70.0
+offset_top = 7.0
+offset_right = 250.0
+offset_bottom = 15.0
+scale = Vector2(3, 3)
+text = "MEMEBOUNCE"
+clip_text = false
+
+[node name="Title" type="Label" parent="." unique_id=835586197]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 7.0
+offset_right = 250.0
+offset_bottom = 15.0
+scale = Vector2(3, 3)
+theme_override_colors/font_color = Color(0.647059, 0.952941, 0.988235, 1)
+text = "MEMEBOUNCE"
+clip_text = false
+
+[node name="Tagline" type="Label" parent="." unique_id=1782105531]
+layout_mode = 0
+offset_top = 32.0
+offset_right = 320.0
+offset_bottom = 40.0
+theme_override_colors/font_color = Color(0.654902, 0.545098, 0.980392, 1)
+text = "NEVER GIVE UP. BOUNCE BACK STRONGER."
+horizontal_alignment = 1
+
+[node name="Buttons" type="GridContainer" parent="." unique_id=1103027857]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 107.0
+offset_right = 260.0
+offset_bottom = 145.0
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="Play" type="Button" parent="Buttons" unique_id=880820718]
+custom_minimum_size = Vector2(96, 16)
+layout_mode = 2
+text = "PLAY GAME"
+
+[node name="Levels" type="Button" parent="Buttons" unique_id=880820719]
+custom_minimum_size = Vector2(96, 16)
+layout_mode = 2
+text = "SELECT LEVEL"
+
+[node name="HowToPlay" type="Button" parent="Buttons" unique_id=880820720]
+custom_minimum_size = Vector2(96, 16)
+layout_mode = 2
+text = "HOW TO PLAY"
+
+[node name="Quit" type="Button" parent="Buttons" unique_id=1135135959]
+custom_minimum_size = Vector2(96, 16)
+layout_mode = 2
+text = "QUIT"
+
+[node name="Controls" type="Label" parent="." unique_id=1804431871]
+modulate = Color(0.560784, 0.607843, 0.74902, 1)
+layout_mode = 0
+offset_top = 162.0
+offset_right = 320.0
+offset_bottom = 170.0
+text = "A/D MOVE   SPACE JUMP   R BOUNCE BACK"
+horizontal_alignment = 1

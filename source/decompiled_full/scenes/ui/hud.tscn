@@ -1,0 +1,149 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://c64606lv3hbca" path="res://scripts/hud.gd" id="1"]
+
+[node name="HUD" type="CanvasLayer" unique_id=1322245548]
+layer = 30
+script = ExtResource("1")
+
+[node name="Top" type="Control" parent="." unique_id=538128402]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 320.0
+offset_bottom = 30.0
+mouse_filter = 2
+
+[node name="Backdrop" type="ColorRect" parent="Top" unique_id=1691975613]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 130.0
+offset_bottom = 34.0
+color = Color(0.0627451, 0.0941176, 0.152941, 0.85)
+
+[node name="Level" type="Label" parent="Top" unique_id=927831243]
+modulate = Color(0.654902, 0.545098, 0.980392, 1)
+layout_mode = 0
+offset_left = 5.0
+offset_top = 4.0
+offset_right = 200.0
+offset_bottom = 12.0
+text = "LV1"
+
+[node name="Attempt" type="Label" parent="Top" unique_id=1147388993]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 13.0
+offset_right = 120.0
+offset_bottom = 21.0
+text = "ATTEMPT 1"
+
+[node name="Echo" type="Label" parent="Top" unique_id=1413487466]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 22.0
+offset_right = 160.0
+offset_bottom = 30.0
+text = "ECHO: NONE"
+
+[node name="EchoBar" type="ColorRect" parent="Top" unique_id=1941332733]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 31.0
+offset_right = 65.0
+offset_bottom = 32.0
+color = Color(0.129412, 0.105882, 0.219608, 1)
+
+[node name="Fill" type="ColorRect" parent="Top/EchoBar" unique_id=2053985088]
+layout_mode = 0
+offset_bottom = 1.0
+color = Color(0.133333, 0.827451, 0.933333, 1)
+
+[node name="Keys" type="Label" parent="." unique_id=1035043925]
+modulate = Color(0.560784, 0.607843, 0.74902, 0.7)
+offset_left = 150.0
+offset_top = 170.0
+offset_right = 318.0
+offset_bottom = 178.0
+text = "R: REBOUND   ESC: PAUSE"
+horizontal_alignment = 2
+
+[node name="Toast" type="Label" parent="." unique_id=593292918]
+modulate = Color(1, 1, 1, 0)
+offset_top = 146.0
+offset_right = 320.0
+offset_bottom = 154.0
+theme_override_colors/font_color = Color(0.647059, 0.952941, 0.988235, 1)
+text = "ECHO CREATED"
+horizontal_alignment = 1
+
+[node name="TitleCard" type="Control" parent="." unique_id=378962600]
+layout_mode = 3
+anchors_preset = 0
+offset_top = 60.0
+offset_right = 320.0
+offset_bottom = 100.0
+mouse_filter = 2
+
+[node name="Bar" type="ColorRect" parent="TitleCard" unique_id=301382090]
+layout_mode = 0
+offset_top = 2.0
+offset_right = 320.0
+offset_bottom = 34.0
+color = Color(0.0627451, 0.0941176, 0.152941, 0.75)
+
+[node name="Num" type="Label" parent="TitleCard" unique_id=1517142462]
+layout_mode = 0
+offset_top = 6.0
+offset_right = 320.0
+offset_bottom = 14.0
+theme_override_colors/font_color = Color(0.654902, 0.545098, 0.980392, 1)
+text = "- LEVEL 1 -"
+horizontal_alignment = 1
+
+[node name="Name" type="Label" parent="TitleCard" unique_id=838436176]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 16.0
+offset_right = 240.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.647059, 0.952941, 0.988235, 1)
+text = "FIRST FALL"
+horizontal_alignment = 1
+
+[node name="Fail" type="Control" parent="." unique_id=2116220940]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 320.0
+offset_bottom = 180.0
+mouse_filter = 2
+
+[node name="Ghost" type="Label" parent="Fail" unique_id=171748734]
+modulate = Color(0.133333, 0.827451, 0.933333, 0.7)
+layout_mode = 0
+offset_left = 112.0
+offset_top = 58.0
+offset_right = 212.0
+offset_bottom = 66.0
+scale = Vector2(2, 2)
+text = "FAIL FORWARD"
+
+[node name="Big" type="Label" parent="Fail" unique_id=690921396]
+layout_mode = 0
+offset_left = 110.0
+offset_top = 57.0
+offset_right = 210.0
+offset_bottom = 65.0
+scale = Vector2(2, 2)
+theme_override_colors/font_color = Color(0.956863, 0.447059, 0.713725, 1)
+text = "FAIL FORWARD"
+
+[node name="Sub" type="Label" parent="Fail" unique_id=283183475]
+layout_mode = 0
+offset_top = 78.0
+offset_right = 320.0
+offset_bottom = 86.0
+theme_override_colors/font_color = Color(0.839216, 0.870588, 0.937255, 1)
+text = "EVERY FALL LEAVES SOMETHING BEHIND"
+horizontal_alignment = 1

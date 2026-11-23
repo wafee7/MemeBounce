@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://bve21dc2nawxu"]
+
+[ext_resource type="Script" uid="uid://j84ycsj4ua1a" path="res://scripts/level.gd" id="1"]
+[ext_resource type="Script" uid="uid://bnfsp12jsqrpm" path="res://scripts/level_background.gd" id="2"]
+[ext_resource type="Script" uid="uid://c1uibkdifuhcf" path="res://scripts/tile_layer.gd" id="3"]
+[ext_resource type="PackedScene" uid="uid://jccipyhbol77" path="res://scenes/echo/echo.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="5"]
+[ext_resource type="Script" uid="uid://y37ciatx6o3v" path="res://scripts/camera_rig.gd" id="6"]
+[ext_resource type="Shader" uid="uid://bbadhkd0rb334" path="res://shaders/screen_fx.gdshader" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="9"]
+
+[sub_resource type="ShaderMaterial" id="fx_mat"]
+shader = ExtResource("7")
+shader_parameter/glitch = 0.0
+shader_parameter/flash = 0.0
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+
+[node name="Level" type="Node2D" unique_id=727831090]
+script = ExtResource("1")
+
+[node name="Background" type="Node2D" parent="." unique_id=1187402215]
+z_index = -10
+script = ExtResource("2")
+
+[node name="Terrain" type="Node2D" parent="." unique_id=347880227]
+script = ExtResource("3")
+
+[node name="Solids" type="StaticBody2D" parent="." unique_id=1966565389]
+
+[node name="Objects" type="Node2D" parent="." unique_id=1749251706]
+
+[node name="Echo" parent="." unique_id=2055146720 instance=ExtResource("4")]
+
+[node name="Player" parent="." unique_id=433574612 instance=ExtResource("5")]
+
+[node name="FX" type="Node2D" parent="." unique_id=1873307247]
+editor_description = "Runtime effects layer: hint text, afterimages, particle bursts. Looks empty in the editor; do not delete."
+z_index = 6
+
+[node name="Camera" type="Camera2D" parent="." unique_id=1363113847]
+script = ExtResource("6")
+
+[node name="ScreenFX" type="CanvasLayer" parent="." unique_id=1829443997]
+layer = 20
+
+[node name="Rect" type="ColorRect" parent="ScreenFX" unique_id=1684134663]
+material = SubResource("fx_mat")
+offset_right = 320.0
+offset_bottom = 180.0
+mouse_filter = 2
+
+[node name="HUD" parent="." unique_id=1390265199 instance=ExtResource("8")]
+
+[node name="PauseMenu" parent="." unique_id=1765679699 instance=ExtResource("9")]

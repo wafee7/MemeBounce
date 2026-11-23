@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://10gxkkkeatj2" path="res://scripts/flyer.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://drytqjhqu0ipt" path="res://assets/sprites/flyers/pixel-cat-meme-1.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://o0jn7sm3s7ne" path="res://assets/sprites/fx_dots.png" id="3"]
+
+[node name="Flyer" type="Node2D" unique_id=217329196]
+z_index = 3
+script = ExtResource("1")
+
+[node name="Sprite" type="Sprite2D" parent="." unique_id=1304358872]
+texture = ExtResource("2")
+
+[node name="Burst" type="CPUParticles2D" parent="." unique_id=1437408623]
+emitting = false
+amount = 12
+texture = ExtResource("3")
+lifetime = 0.45
+one_shot = true
+explosiveness = 1.0
+emission_shape = 1
+emission_sphere_radius = 4.0
+spread = 180.0
+gravity = Vector2(0, 160)
+initial_velocity_min = 30.0
+initial_velocity_max = 70.0
+scale_amount_min = 0.5
+color = Color(0.956863, 0.447059, 0.713726, 1)
+
+[node name="Voice" type="AudioStreamPlayer2D" parent="." unique_id=620229840]
+volume_db = -6.0
+max_distance = 420.0
+attenuation = 1.5

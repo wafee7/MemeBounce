@@ -1,4 +1,4 @@
-# Godot 4 engine cache and auto-generated imports
+﻿# Godot 4 engine cache and auto-generated imports
 .godot/
 */.godot/
 */*/.godot/
@@ -12,3 +12,9 @@ game/rebound.exe
 *.tmp
 .DS_Store
 Thumbs.db
+
+# Redundant temporary decompiler dumps
+source/extracted_*/
+
+# Root release zips
+/MemeBounce*.zip

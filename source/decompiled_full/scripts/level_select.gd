@@ -1,4 +1,4 @@
-﻿class_name LevelSelect
+class_name LevelSelect
 extends Control
 
 # Comic-styled Level Select Modal for MEMEBOUNCE

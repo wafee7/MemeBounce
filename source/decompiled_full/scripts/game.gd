@@ -136,10 +136,8 @@ func _show_quit_meme() -> void :
 	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(rect)
 
-	var img: = Image.new()
-	var err: = img.load("res://assets/sprites/hamster.png")
-	if err == OK:
-		var tex: = ImageTexture.create_from_image(img)
+	var tex: Texture2D = load("res://assets/sprites/hamster.png")
+	if tex:
 		var card: = TextureRect.new()
 		card.texture = tex
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -308,11 +306,7 @@ func get_character_texture(char_name: String) -> Texture2D:
 		return _char_textures[char_name]
 	var path: = "res://assets/sprites/characters/%s.png" % char_name
 	var tex: Texture2D = null
-	if FileAccess.file_exists(path):
-		var img: = Image.load_from_file(path)
-		if img:
-			tex = ImageTexture.create_from_image(img)
-	elif ResourceLoader.exists(path):
+	if ResourceLoader.exists(path):
 		tex = load(path)
 	if tex:
 		_char_textures[char_name] = tex

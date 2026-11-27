@@ -562,9 +562,9 @@ func _create_char_sprite(char_name: String, pos: Vector2) -> Sprite2D:
 	if g and g.has_method("get_character_texture"):
 		spr.texture = g.get_character_texture(char_name)
 	else:
-		var img: Image = Image.load_from_file("res://assets/sprites/characters/%s.png" % char_name)
-		if img:
-			spr.texture = ImageTexture.create_from_image(img)
+		var path: String = "res://assets/sprites/characters/%s.png" % char_name
+		if ResourceLoader.exists(path):
+			spr.texture = load(path)
 	spr.hframes = 8
 	spr.vframes = 4
 	spr.position = pos

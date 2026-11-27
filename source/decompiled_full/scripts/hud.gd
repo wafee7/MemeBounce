@@ -82,9 +82,8 @@ func _ready() -> void :
 	add_child(coin_bg)
 
 	_coin_spr = Sprite2D.new()
-	var img: = Image.load_from_file("res://assets/sprites/coins/spr_coin_strip4.png")
-	if img:
-		_coin_spr.texture = ImageTexture.create_from_image(img)
+	if ResourceLoader.exists("res://assets/sprites/coins/spr_coin_strip4.png"):
+		_coin_spr.texture = load("res://assets/sprites/coins/spr_coin_strip4.png")
 	_coin_spr.hframes = 4
 	_coin_spr.frame = 0
 	_coin_spr.position = Vector2(262, 9)

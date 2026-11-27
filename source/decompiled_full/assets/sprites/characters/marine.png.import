@@ -1,9 +1,9 @@
-﻿[remap]
+[remap]
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://m4a5r6i7n8e9l0"
-path="res://.godot/imported/marine.png-3d005a7c6d6e7af52e71d83895549ab0.ctex"
+uid="uid://b2ypcwynlkiaq"
+path="res://.godot/imported/marine.png-cd774aabd92c5672a146aa4389a60c24.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/sprites/characters/marine.png"
-dest_files=["res://.godot/imported/marine.png-3d005a7c6d6e7af52e71d83895549ab0.ctex"]
+dest_files=["res://.godot/imported/marine.png-cd774aabd92c5672a146aa4389a60c24.ctex"]
 
 [params]
 

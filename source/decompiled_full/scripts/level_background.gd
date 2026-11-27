@@ -27,10 +27,6 @@ static func get_tex(path: String) -> Texture2D:
 		var res = load(path)
 		if res is Texture2D:
 			return res
-	if FileAccess.file_exists(path):
-		var img = Image.load_from_file(path)
-		if img:
-			return ImageTexture.create_from_image(img)
 	return null
 
 

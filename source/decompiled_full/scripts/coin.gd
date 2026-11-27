@@ -11,11 +11,7 @@ static func get_tex() -> Texture2D:
 	if _coin_tex:
 		return _coin_tex
 	var path: = "res://assets/sprites/coins/spr_coin_strip4.png"
-	if FileAccess.file_exists(path):
-		var img: = Image.load_from_file(path)
-		if img:
-			_coin_tex = ImageTexture.create_from_image(img)
-	elif ResourceLoader.exists(path):
+	if ResourceLoader.exists(path):
 		_coin_tex = load(path)
 	return _coin_tex
 

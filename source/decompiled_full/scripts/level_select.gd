@@ -16,10 +16,8 @@ var _coin_t: float = 0.0
 
 static func get_lock_icon() -> Texture2D:
 	var path: = "res://assets/sprites/lock.png"
-	if FileAccess.file_exists(path):
-		var img: = Image.load_from_file(path)
-		if img:
-			return ImageTexture.create_from_image(img)
+	if ResourceLoader.exists(path):
+		return load(path)
 	return null
 
 
@@ -75,9 +73,8 @@ func _build_header(parent: Node) -> void:
 
 	# Animated spinning golden coin
 	_coin_spr = Sprite2D.new()
-	var img: = Image.load_from_file("res://assets/sprites/coins/spr_coin_strip4.png")
-	if img:
-		_coin_spr.texture = ImageTexture.create_from_image(img)
+	if ResourceLoader.exists("res://assets/sprites/coins/spr_coin_strip4.png"):
+		_coin_spr.texture = load("res://assets/sprites/coins/spr_coin_strip4.png")
 	_coin_spr.hframes = 4
 	_coin_spr.frame = 0
 	_coin_spr.position = Vector2(252, 9)
